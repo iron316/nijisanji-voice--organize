@@ -27,7 +27,6 @@ def extract_file_info(dir_name: str, liver_info_path: str) -> Tuple[str, str, bo
     else:
         sep = " "
     voice_category = dir_name.split(sep)[-1]
-
     liver_info_df = pd.read_csv(liver_info_path)
     liver_name = "unkown"
     for name in liver_info_df["name"]:
@@ -37,12 +36,8 @@ def extract_file_info(dir_name: str, liver_info_path: str) -> Tuple[str, str, bo
 
 
 def organize_image(extracted_path: Path, config: Dict[str, str]) -> None:
-    print(list(extracted_path.glob("*/*")))
-    if (extracted_path / "ボイス").is_dir():
-        zip_file = list(extracted_path.glob("ボイス/*.zip"))[0]
-    else:
-        zip_file = list(extracted_path.glob("*/ボイス/*.zip"))[0]
-    file_name = str(zip_file).split("/")[-1].replace(".zip", "")
+    zip_file = list(extracted_path.glob("ボイス/*"))[0]
+    file_name = str(zip_file).split("/")[-1].replace(".zip", "").replace(".mp3", "")
     _, voice_category, _ = extract_file_info(file_name, config["liver_info_path"])
     target_dir = Path(config["image_target_path"]) / voice_category
     target_dir.mkdir(exist_ok=True, parents=True)
@@ -57,6 +52,12 @@ def organize_voice(source_path: Path, config: Dict[str, str]) -> None:
 
     out_path = extract_zipfile(source_path, tmp_dir)
     dir_name = str(out_path).split("/")[-1]
+    next_ = list(out_path.glob("*"))[0]
+    if next_.name[:10] == dir_name[:10] and next_.is_dir():
+        out_path = next_
+    elif next_.name == "ボイス" or next_.name == "特典壁紙":
+        organize_image(out_path, config)
+        out_path = out_path / "ボイス"
 
     liver_name, voice_category, is_EX = extract_file_info(
         dir_name, config["liver_info_path"]
@@ -119,7 +120,7 @@ def organize():
                 for p in source.glob("*.zip")
                 if is_voice_zipfile(p, config["liver_info_path"])
             ]
-        )
+        )[::-1]
 
     else:
         assert source.exists(), "Source is not exsist"
@@ -129,24 +130,29 @@ def organize():
         sorces = [source]
 
     with open("log.txt", "r") as f:
-        logs = f.read().split("\n")
+        logs = f.read().split("\n")[:-1]
     tmp_dir = Path(config["tmp_directory"])
     tmp_dir.mkdir(exist_ok=True, parents=True)
 
     for source in sources:
         # check already organize
-        source_file_name = source.name.replace(".zip", "")
-        if any([source_file_name in log for log in logs]):
+        if (
+            any(
+                [log.replace(".zip", "") == source.name[: len(log) - 4] for log in logs]
+            )
+            and len(logs) > 0
+        ):
             continue
         print(source.name)
 
-        if "キービジュアル" in str(source):
+        if "キービジュアル" in source.name:
             extracted_path = extract_zipfile(source, tmp_dir)
+            next_ = list(extracted_path.glob("*"))[0]
+            if next_.name[:10] == source.name[:10] and next_.is_dir():
+                extracted_path = next_
             # voice
-            if (extracted_path / "ボイス").is_dir():
-                voice_zips = list(extracted_path.glob("ボイス/*.zip"))
-            else:
-                voice_zips = list(extracted_path.glob("*/ボイス/*.zip"))
+            voice_zips = list(extracted_path.glob("ボイス/*.zip"))
+
             for voice_zip in voice_zips:
                 print("\t", voice_zip.name)
                 organize_voice(voice_zip, config)
