@@ -1,0 +1,8 @@
+# must need parameter
+voice_target_path: "path/to/voice_dir"
+image_target_path: "path/to/image_dir"
+download_directory: "path/to/your_download_dir"
+
+# directory
+tmp_directory: "./tmp"
+liver_info_path: "./data/liver_infomation.csv"
