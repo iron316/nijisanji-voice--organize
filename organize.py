@@ -35,11 +35,21 @@ def extract_file_info(dir_name: str, liver_info_path: str) -> Tuple[str, str, bo
     return liver_name, voice_category, "EX" in dir_name
 
 
+def extract_liver_names(dir_name: str, liver_info_path: str) -> str:
+    liver_info_df = pd.read_csv(liver_info_path)
+    names = []
+    for name in liver_info_df["name"]:
+        if name in dir_name or name in dir_name.replace("_", "・"):
+            names.append(name)
+    return "(" + "&".join(names) + ")"
+
+
 def organize_image(extracted_path: Path, config: Dict[str, str]) -> None:
     zip_file = list(extracted_path.glob("ボイス/*"))[0]
     file_name = str(zip_file).split("/")[-1].replace(".zip", "").replace(".mp3", "")
+    liver_names = extract_liver_names(extracted_path.name, config["liver_info_path"])
     _, voice_category, _ = extract_file_info(file_name, config["liver_info_path"])
-    target_dir = Path(config["image_target_path"]) / voice_category
+    target_dir = Path(config["image_target_path"]) / (voice_category + liver_names)
     target_dir.mkdir(exist_ok=True, parents=True)
     for p in extracted_path.glob("特典壁紙/*"):
         file_name = p.name
