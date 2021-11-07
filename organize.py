@@ -56,11 +56,14 @@ def organize_image(extracted_path: Path, config: Dict[str, str]) -> None:
         shutil.copy(str(p), str(target_dir / file_name))
 
 
-def organize_voice(source_path: Path, config: Dict[str, str]) -> None:
+def organize_voice(source_path: Path, config: Dict[str, str], is_zip=True) -> None:
     tmp_dir = Path(config["tmp_directory"])
     tmp_dir.mkdir(exist_ok=True, parents=True)
 
-    out_path = extract_zipfile(source_path, tmp_dir)
+    if is_zip:
+        out_path = extract_zipfile(source_path, tmp_dir)
+    else:
+        out_path = source_path
     dir_name = str(out_path).split("/")[-1]
     next_ = list(out_path.glob("*"))[0]
     if next_.name[:10] == dir_name[:10] and next_.is_dir():
@@ -79,7 +82,8 @@ def organize_voice(source_path: Path, config: Dict[str, str]) -> None:
     for p in out_path.glob("*.mp3"):
         file_name = p.name
         shutil.copy(str(p), str(target_dir / file_name))
-    shutil.copy(str(source_path), str(target_dir / source_path.name))
+    if is_zip:
+        shutil.copy(str(source_path), str(target_dir / source_path.name))
 
 
 def is_voice_zipfile(source: Path, liver_info_path: str):
@@ -171,6 +175,14 @@ def organize():
                     f.write(voice_zip.name + "\n")
             # image
             organize_image(extracted_path, config)
+        elif "コンプリート" in source.name:
+            extracted_path = extract_zipfile(source, tmp_dir)
+            for voice_dir in extracted_path.glob("*/*"):
+                print("\t", voice_dir.name)
+                organize_voice(voice_dir, config, is_zip=False)
+                logs.append(voice_dir.name)
+                with open("log.txt", "a") as f:
+                    f.write(voice_dir.name + "\n")
         else:
             organize_voice(source, config)
 
